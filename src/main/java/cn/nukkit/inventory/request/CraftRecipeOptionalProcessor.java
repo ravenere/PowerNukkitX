@@ -3,6 +3,8 @@ package cn.nukkit.inventory.request;
 import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.block.BlockID;
+import cn.nukkit.event.inventory.PlayerTypingAnvilInventoryEvent;
+import cn.nukkit.event.inventory.RepairItemEvent;
 import cn.nukkit.inventory.AnvilInventory;
 import cn.nukkit.inventory.CartographyTableInventory;
 import cn.nukkit.inventory.Inventory;
@@ -59,8 +61,15 @@ public class CraftRecipeOptionalProcessor implements ItemStackRequestActionProce
         if (inventory instanceof AnvilInventory anvilInventory) {
             Pair<Item, Integer> pair = updateAnvilResult(player, anvilInventory, filterString);
             if (pair != null) {
-                player.getCreativeOutputInventory().setItem(pair.left());
-                player.setExperience(player.getExperience(),player.getExperienceLevel() - pair.right());
+                Item newItem = pair.left();
+                RepairItemEvent event = new RepairItemEvent(anvilInventory, anvilInventory.getInputSlot(), newItem, anvilInventory.getMaterialSlot(), pair.right(), player);
+                player.getServer().getPluginManager().callEvent(event);
+                if(!event.isCancelled()) {
+                    player.getCreativeOutputInventory().setItem(newItem);
+                    player.setExperience(player.getExperience(),player.getExperienceLevel() - pair.right());
+                } else {
+                    player.getCreativeOutputInventory().sendContents(player);
+                }
             } else{
                 return context.error();
             }
@@ -227,6 +236,8 @@ public class CraftRecipeOptionalProcessor implements ItemStackRequestActionProce
         } else {
             costHelper = 1;
             extraCost += costHelper;
+            PlayerTypingAnvilInventoryEvent event = new PlayerTypingAnvilInventoryEvent(player, inventory, result.getCustomName(), filterString);
+            player.getServer().getPluginManager().callEvent(event);
             result.setCustomName(filterString);
         }
 
