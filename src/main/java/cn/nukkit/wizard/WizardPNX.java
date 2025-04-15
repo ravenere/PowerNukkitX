@@ -55,7 +55,7 @@ public class WizardPNX {
         List<String> availableLanguages = getAvailableLanguages();
         log.info("Please select a language from the list below:");
 
-        // Afficher les langues disponibles
+        // Display available languages
         availableLanguages.forEach(lang -> log.info("- {}", lang));
 
         String chosenLanguage = null;
@@ -63,7 +63,7 @@ public class WizardPNX {
             log.info("Type the language name or part of it:");
             String input = console.readLine().trim();
 
-            // Vérifier si l'entrée correspond à une langue
+            // Check if the input matches a language
             List<String> matches = availableLanguages.stream()
                     .filter(lang -> lang.toLowerCase().contains(input.toLowerCase()))
                     .collect(Collectors.toList());
