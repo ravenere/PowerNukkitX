@@ -87,6 +87,7 @@ import cn.nukkit.tags.BlockTags;
 import cn.nukkit.tags.ItemTags;
 import cn.nukkit.utils.*;
 import cn.nukkit.utils.collection.FreezableArrayManager;
+import cn.nukkit.wizard.WizardPNX;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import eu.okaeri.configs.ConfigManager;
@@ -243,80 +244,33 @@ public class Server {
         instance = this;
 
         this.filePath = filePath;
-        if (!new File(dataPath + "worlds/").exists()) {
-            new File(dataPath + "worlds/").mkdirs();
-        }
-        if (!new File(dataPath + "players/").exists()) {
-            new File(dataPath + "players/").mkdirs();
-        }
-        if (!new File(pluginPath).exists()) {
-            new File(pluginPath).mkdirs();
-        }
+
         this.dataPath = new File(dataPath).getAbsolutePath() + "/";
         this.pluginPath = new File(pluginPath).getAbsolutePath() + "/";
         String commandDataPath = new File(dataPath).getAbsolutePath() + "/command_data";
-        if (!new File(commandDataPath).exists()) {
-            new File(commandDataPath).mkdirs();
-        }
 
         this.console = new NukkitConsole(this);
         this.consoleThread = new ConsoleThread();
         this.consoleThread.start();
 
+        WizardPNX wizardPNX = new WizardPNX();
+        wizardPNX.verify(filePath, console, predefinedLanguage);
+
         while(convertLegacyConfiguration());
 
-        File config = new File(this.dataPath + "pnx.yml");
-        String chooseLanguage = null;
-        if (!config.exists()) {
-            log.info("{}Welcome! Please choose a language first!", TextFormat.GREEN);
-            try {
-                InputStream languageList = this.getClass().getModule().getResourceAsStream("language/language.list");
-                if (languageList == null) {
-                    throw new IllegalStateException("language/language.list is missing. If you are running a development version, make sure you have run 'git submodule update --init'.");
-                }
-                String[] lines = Utils.readFile(languageList).split("\n");
-                for (String line : lines) {
-                    log.info(line);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        File pnxConfig = new File(this.dataPath + "pnx.yml");
 
-            while (chooseLanguage == null) {
-                String lang;
-                if (predefinedLanguage != null) {
-                    log.info("Trying to load language from predefined language: {}", predefinedLanguage);
-                    lang = predefinedLanguage;
-                } else {
-                    lang = this.console.readLine();
-                }
-
-                try (InputStream conf = this.getClass().getClassLoader().getResourceAsStream("language/" + lang + "/lang.json")) {
-                    if (conf != null) {
-                        chooseLanguage = lang;
-                    } else if (predefinedLanguage != null) {
-                        log.warn("No language found for predefined language: {}, please choose a valid language", predefinedLanguage);
-                        predefinedLanguage = null;
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        } else {
-            Config configInstance = new Config(config);
-            chooseLanguage = configInstance.getString("settings.language", "eng");
-        }
-        this.baseLang = new BaseLang(chooseLanguage);
-        this.baseLangCode = mapInternalLang(chooseLanguage);
+        this.baseLang = new BaseLang(wizardPNX.getLanguage());
+        this.baseLangCode = mapInternalLang(wizardPNX.getLanguage());
         this.settings = ConfigManager.create(ServerSettings.class, it -> {
             log.info("Loading {}...", TextFormat.GREEN + "pnx.yml" + TextFormat.RESET);
             it.withConfigurer(new YamlSnakeYamlConfigurer());
-            it.withBindFile(config);
+            it.withBindFile(pnxConfig);
             it.withRemoveOrphans(true);
             it.saveDefaults();
             it.load(true);
         });
-        this.settings.baseSettings().language(chooseLanguage);
+        this.settings.baseSettings().language(wizardPNX.getLanguage());
 
         while(updateConfiguration());
 
