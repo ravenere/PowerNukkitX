@@ -1,6 +1,7 @@
 name: PNX Build
 
 on: [
+    workflow_dispatch,
     pull_request,
     push
 ]
